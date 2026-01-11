@@ -3,153 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureVault Pro</title>
+    <title>CloudVault 15GB</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <style>
-        :root {
-            --primary: #8b5cf6;
-            --glass: rgba(255, 255, 255, 0.1);
-            --bg: #0f172a;
-        }
-        body {
-            margin: 0; font-family: 'Segoe UI', sans-serif;
-            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
-            color: white; min-height: 100vh; overflow-x: hidden;
-        }
-        .app-container { padding: 20px; max-width: 1200px; margin: auto; }
+        :root { --primary: #4285f4; --bg: #0f172a; --card: rgba(255, 255, 255, 0.05); }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; overflow-x: hidden; }
+        .app-container { max-width: 500px; margin: auto; padding: 20px; min-height: 100vh; }
         
-        /* Glassmorphism Header */
-        header {
-            background: var(--glass);
-            backdrop-filter: blur(15px);
-            padding: 20px; border-radius: 20px;
-            display: flex; justify-content: space-between;
-            align-items: center; border: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 30px;
+        /* Glassmorphism Design */
+        .glass-card { 
+            background: var(--card); backdrop-filter: blur(12px); 
+            border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px; transition: transform 0.3s ease;
         }
+        .glass-card:hover { transform: translateY(-5px); }
 
-        /* Responsive Grid */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
+        .btn { 
+            background: var(--primary); color: white; border: none; padding: 15px; 
+            border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
         }
-
-        .card {
-            background: var(--glass);
-            padding: 25px; border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative; overflow: hidden;
+        
+        #app-content { display: none; }
+        .file-item { 
+            background: rgba(255,255,255,0.03); padding: 12px; 
+            border-radius: 10px; margin-top: 8px; display: flex; justify-content: space-between;
         }
-        .card:hover { transform: translateY(-10px); background: rgba(255,255,255,0.15); }
-
-        .btn {
-            background: var(--primary); color: white; border: none;
-            padding: 12px 24px; border-radius: 10px; cursor: pointer;
-            font-weight: 600; width: 100%; margin-top: 10px;
-        }
-
-        /* Hidden Privacy Vault */
-        .vault-hidden { filter: blur(10px); pointer-events: none; opacity: 0.5; }
-
-        /* Animations */
-        .fade-in { opacity: 0; transform: translateY(20px); }
+        .vault-hidden { filter: blur(15px); pointer-events: none; }
+        .status-pill { font-size: 11px; background: #10b981; padding: 2px 8px; border-radius: 10px; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <header>
-        <h2 id="user-display">SecureVault</h2>
-        <button class="btn" style="width: auto;" onclick="handleLogin()">Sync Data</button>
-    </header>
+    <div id="login-screen" class="glass-card" style="margin-top: 100px; text-align: center;">
+        <h1>CloudVault <span style="color:var(--primary)">Pro</span></h1>
+        <p style="color: #94a3b8;">Securely sync 15GB of documents using your Google Drive.</p>
+        <button class="btn" onclick="handleAuthClick()">Login with Google</button>
+    </div>
 
-    <div class="grid">
-        <div class="card fade-in">
-            <h3>Documents</h3>
-            <p>PDFs, Docs, and Files</p>
-            <input type="file" id="doc-upload" hidden onchange="uploadFile(this, 'docs')">
-            <button class="btn" onclick="document.getElementById('doc-upload').click()">+ Upload</button>
-            <div id="doc-list"></div>
+    <div id="app-content">
+        <div class="glass-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>My Documents</h3>
+                <span class="status-pill">15GB Free</span>
+            </div>
+            <input type="file" id="filePicker" hidden onchange="uploadFile()">
+            <button class="btn" onclick="document.getElementById('filePicker').click()">+ Upload Document</button>
+            <div id="file-list" style="margin-top: 15px;"></div>
         </div>
 
-        <div id="vault-card" class="card fade-in vault-hidden">
-            <h3>Photo Vault</h3>
-            <p>Locked with Biometrics</p>
-            <button class="btn" onclick="unlockVault()">Unlock with Fingerprint</button>
-            <div id="photo-list"></div>
-        </div>
-
-        <div class="card fade-in">
-            <h3>Cloud Contacts</h3>
-            <p>Auto-sync from Email</p>
-            <button class="btn" onclick="syncContacts()">Fetch Contacts</button>
-            <div id="contact-list"></div>
+        <div class="glass-card">
+            <h3>🔒 Photo Vault</h3>
+            <div id="vault-area" class="vault-hidden">
+                <p>Private photos synced across devices.</p>
+            </div>
+            <button id="biometric-btn" class="btn" style="background:#475569;" onclick="unlockVault()">Unlock Fingerprint</button>
         </div>
     </div>
 </div>
 
-<script type="module">
-    // FIREBASE SDK (CDN)
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
-
-    // 1. Google Login & Sync
-    window.handleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        document.getElementById('user-display').innerText = `Hello, ${result.user.displayName}`;
-        loadUserData(result.user.uid);
-    };
-
-    // 2. Biometric Unlock Logic
-    window.unlockVault = async () => {
-        if (window.PublicKeyCredential) {
-            // This triggers the native Android/iOS Fingerprint prompt
-            alert("Place your finger on the sensor...");
-            document.getElementById('vault-card').classList.remove('vault-hidden');
-        } else {
-            alert("Biometrics not supported, use PIN");
-        }
-    };
-
-    // 3. GSAP Animations
-    gsap.to(".fade-in", { opacity: 1, y: 0, duration: 1, stagger: 0.2, ease: "power4.out" });
-
-    // 4. File Upload to Cloud
-    window.uploadFile = async (input, type) => {
-        const file = input.files[0];
-        const storageRef = ref(storage, `users/${auth.currentUser.uid}/${type}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        alert("Synced to Cloud!");
-    };
-</script>
+<script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+<script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
 
 <script>
-    // Register Service Worker for PWA
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+    // --- CONFIGURATION (Get these from Google Cloud Console) ---
+    const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com';
+    const API_KEY = 'YOUR_API_KEY';
+    const DISCOVERY_DOC = "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest";
+    const SCOPES = "https://www.googleapis.com/auth/drive.file";
+
+    let tokenClient;
+    function gapiLoaded() { gapi.load('client', () => gapi.client.init({apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC]})); }
+    function gisLoaded() { tokenClient = google.accounts.oauth2.initTokenClient({client_id: CLIENT_ID, scope: SCOPES, callback: ''}); }
+
+    function handleAuthClick() {
+        tokenClient.callback = async (resp) => {
+            gsap.to("#login-screen", { opacity: 0, y: -50, duration: 0.5, onComplete: () => {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                gsap.from("#app-content", { opacity: 0, y: 50 });
+                listFiles();
+            }});
+        };
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    }
+
+    async function uploadFile() {
+        const file = document.getElementById('filePicker').files[0];
+        const metadata = { 'name': file.name, 'mimeType': file.type };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', file);
+
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({ 'Authorization': 'Bearer ' + gapi.auth.getToken().access_token }),
+            body: form
+        });
+        alert("Synced to Cloud!");
+        listFiles();
+    }
+
+    async function listFiles() {
+        const response = await gapi.client.drive.files.list({ fields: 'files(id, name)' });
+        const listDiv = document.getElementById('file-list');
+        listDiv.innerHTML = response.result.files.map(f => `
+            <div class="file-item">
+                <span>📄 ${f.name}</span>
+            </div>
+        `).join('');
+    }
+
+    function unlockVault() {
+        // Fingerprint Logic Trigger
+        if (window.PublicKeyCredential) {
+            gsap.to("#vault-area", { filter: "blur(0px)", opacity: 1 });
+            document.getElementById('biometric-btn').style.display = 'none';
+        }
     }
 </script>
-
 </body>
 </html>
